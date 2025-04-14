@@ -1,7 +1,7 @@
 import { React } from '@vendetta/metro/common'
 import { getAssetIDByName } from '@vendetta/ui/assets'
 import { patchSettingsPin } from '$/lib/pinToSettings'
-import CustomSettingsPage from '../components/CustomSettingsPage'
+import CustomSettingsPage from '../components/customSettingsPage'
 
 export default (): (() => void) => {
     const patches: (() => void)[] = []
