@@ -15,7 +15,7 @@ export default {
             instead("openLazy", Alerts, () => () => {}),
             instead("show", findByProps("show"), () => {}),
             instead("openModal", Modals, () => () => {})
-        );
+        )
 
         // 2. Direkt mesaj silme fonksiyonunu yakala
         unpatch.push(instead("deleteMessage", MessageActions, (args, orig) => {
@@ -36,7 +36,7 @@ export default {
             }
             
             return Promise.resolve();
-        });
+        }))
 
         // 3. MessageStore'daki silme işlemini de yakala
         const MessageStore = findByStoreName("MessageStore");
@@ -44,7 +44,7 @@ export default {
             unpatch.push(instead("deleteMessage", MessageStore, (args, orig) => {
                 Modals?.closeAllModals?.();
                 return orig(...args);
-            }));
+            }))
         }
 
         console.log("[Silme Bypass] Tamamen aktif!");
@@ -55,4 +55,5 @@ export default {
         unpatch = [];
         console.log("[Silme Bypass] Kaldırıldı!");
     }
+}
 }
