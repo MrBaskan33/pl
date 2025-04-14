@@ -1,4 +1,4 @@
-import { showDialog } from "../../../../lib/ui/alertDialog"
+import { showDialog } from "./alertDialog"
 
 export default function (staticApngOnFail) {
   showDialog({
