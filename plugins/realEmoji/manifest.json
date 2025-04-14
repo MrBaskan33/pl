@@ -1,0 +1,14 @@
+{
+  "name": "Real Emoji",
+  "description": "Real Emoji Plugin.",
+  "authors": [
+    {
+      "name": "mrbaskan",
+      "id": "873182701061021696"
+    }
+  ],
+  "main": "src/index.ts",
+  "vendetta": {
+    "icon": "ic_emoji"
+  }
+}
