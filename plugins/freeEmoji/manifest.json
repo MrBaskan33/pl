@@ -1,0 +1,11 @@
+{
+  "name": "Free Emoji",
+  "description": "Free Emoji Plugin.",
+  "authors": [
+    {
+      "name": "mrbaskan",
+      "id": "873182701061021696"
+    }
+  ],
+  "main": "src/index.ts"
+}
