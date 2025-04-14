@@ -1,239 +1,165 @@
-// @ts-nocheck
-import { definePlugin } from "@vendetta";
-import { React, ReactNative, NavigationNative, stylesheet, constants } from "@vendetta/metro/common";
-import { Forms, General } from "@vendetta/ui/components";
+import { useState } from "react";
+import { React, findByProps } from "@vendetta/metro";
+import { showModal } from "@vendetta/ui/modal";
 import { storage } from "@vendetta/plugin";
-import { useProxy } from "@vendetta/storage";
-import { after } from "@vendetta/patcher";
-import { getAssetIDByName } from "@vendetta/ui/assets";
-import { findByProps } from "@vendetta/metro";
-import { showToast } from "@vendetta/ui/toasts";
+import { Forms } from "@vendetta/ui/components";
 
-const { FormRow, FormSection, FormDivider } = Forms;
-const { View, Text, ScrollView, TouchableOpacity, Image } = General;
+const { FormRow, FormDivider, FormSwitch } = Forms;
 
-// Başlangıç depolama yapısı
-if (!storage.accounts) storage.accounts = [];
-if (!storage.currentAccount) storage.currentAccount = null;
+const tokenModule = findByProps("getToken", "setToken");
+const deviceModule = findByProps("getDeviceId");
+const userModule = findByProps("getCurrentUser");
 
-// Stil sayfası
-const styles = stylesheet.createThemedStyleSheet({
-    container: {
-        flex: 1,
-        padding: 16,
-        backgroundColor: constants.ThemeColorMap.BACKGROUND_PRIMARY,
-    },
-    accountItem: {
-        flexDirection: "row",
-        alignItems: "center",
-        padding: 12,
-        backgroundColor: constants.ThemeColorMap.BACKGROUND_SECONDARY,
-        borderRadius: 8,
-        marginBottom: 8,
-    },
-    accountAvatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        marginRight: 12,
-    },
-    accountInfo: {
-        flex: 1,
-    },
-    accountName: {
-        color: constants.ThemeColorMap.TEXT_NORMAL,
-        fontSize: 16,
-        fontWeight: "bold",
-    },
-    accountEmail: {
-        color: constants.ThemeColorMap.TEXT_MUTED,
-        fontSize: 14,
-    },
-    addButton: {
-        backgroundColor: constants.ThemeColorMap.BACKGROUND_TERTIARY,
-        borderRadius: 8,
-        padding: 12,
-        alignItems: "center",
-        marginTop: 8,
-    },
-    addButtonText: {
-        color: constants.ThemeColorMap.TEXT_LINK,
-        fontWeight: "bold",
-    },
-});
+const ivLength = 12;
+const saltLength = 16;
 
-// Mevcut hesap bilgilerini almak için fonksiyon
-function getCurrentAccountInfo() {
-    const UserStore = findByProps("getCurrentUser");
-    const currentUser = UserStore.getCurrentUser();
-    const EmailStore = findByProps("getEmail");
-    const currentEmail = EmailStore.getEmail();
-    
-    return {
-        id: currentUser?.id,
-        username: currentUser?.username,
-        discriminator: currentUser?.discriminator,
-        avatar: currentUser?.avatar,
-        email: currentEmail,
-        token: window.DiscordNative?.window?.getAuthToken?.()
-    };
+async function deriveKey(password: string, salt: Uint8Array) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
 }
 
-// Hesap ekleme bileşeni
-function AddAccountScreen({ navigation }) {
-    const [isAdding, setIsAdding] = React.useState(false);
+async function encryptToken(token: string, password: string) {
+  const enc = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(ivLength));
+  const salt = crypto.getRandomValues(new Uint8Array(saltLength));
+  const key = await deriveKey(password, salt);
 
-    const handleAddAccount = () => {
-        setIsAdding(true);
-        try {
-            const currentAccount = getCurrentAccountInfo();
-            if (!currentAccount.id || !currentAccount.email) {
-                throw new Error("Hesap bilgileri alınamadı");
-            }
+  const cipherText = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    enc.encode(token)
+  );
 
-            const existingAccount = storage.accounts.find(acc => acc.id === currentAccount.id);
-            if (existingAccount) {
-                showToast("Bu hesap zaten kayıtlı", getAssetIDByName("Small"));
-                return;
-            }
+  const result = new Uint8Array(saltLength + ivLength + cipherText.byteLength);
+  result.set(salt, 0);
+  result.set(iv, saltLength);
+  result.set(new Uint8Array(cipherText), saltLength + ivLength);
 
-            storage.accounts.push(currentAccount);
-            showToast("Hesap başarıyla kaydedildi", getAssetIDByName("Check"));
-
-            if (storage.accounts.length === 1) {
-                storage.currentAccount = currentAccount.id;
-            }
-
-            navigation.goBack();
-        } catch (error) {
-            showToast("Hesap eklenirken hata: " + error.message, getAssetIDByName("Small"));
-        } finally {
-            setIsAdding(false);
-        }
-    };
-
-    return (
-        <ScrollView style={styles.container}>
-            <FormSection title="Mevcut Hesabı Kaydet">
-                <FormRow
-                    label="Mevcut hesabınızı kaydedin"
-                    subLabel="Bu hesabı daha sonra hızlıca geçiş yapmak için kaydedin"
-                    leading={<FormRow.Icon source={getAssetIDByName("ic_add_24px")} />}
-                    onPress={handleAddAccount}
-                    disabled={isAdding}
-                />
-            </FormSection>
-        </ScrollView>
-    );
+  return btoa(String.fromCharCode(...result));
 }
 
-// Hesap yönetimi bileşeni
-function AccountManagerScreen({ navigation }) {
-    useProxy(storage);
+async function decryptToken(encrypted: string, password: string) {
+  const data = Uint8Array.from(atob(encrypted), c => c.charCodeAt(0));
+  const salt = data.slice(0, saltLength);
+  const iv = data.slice(saltLength, saltLength + ivLength);
+  const encryptedData = data.slice(saltLength + ivLength);
 
-    const switchAccount = (accountId) => {
-        const account = storage.accounts.find(acc => acc.id === accountId);
-        if (!account) return;
+  const key = await deriveKey(password, salt);
 
-        try {
-            window.DiscordNative?.window?.setAuthToken?.(account.token);
-            storage.currentAccount = accountId;
-            showToast(`Hesap değiştirildi: ${account.username}`, getAssetIDByName("Check"));
-            navigation.goBack();
-        } catch (error) {
-            showToast("Hesap değiştirilirken hata: " + error.message, getAssetIDByName("Small"));
-        }
-    };
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    encryptedData
+  );
 
-    const removeAccount = (accountId) => {
-        storage.accounts = storage.accounts.filter(acc => acc.id !== accountId);
-        if (storage.currentAccount === accountId) {
-            storage.currentAccount = storage.accounts.length > 0 ? storage.accounts[0].id : null;
-        }
-        showToast("Hesap kaldırıldı", getAssetIDByName("Check"));
-    };
-
-    return (
-        <ScrollView style={styles.container}>
-            <FormSection title="Kayıtlı Hesaplar">
-                {storage.accounts.map((account, index) => (
-                    <React.Fragment key={account.id}>
-                        <TouchableOpacity
-                            style={styles.accountItem}
-                            onPress={() => switchAccount(account.id)}
-                            onLongPress={() => removeAccount(account.id)}
-                        >
-                            <Image
-                                style={styles.accountAvatar}
-                                source={{ uri: `https://cdn.discordapp.com/avatars/${account.id}/${account.avatar}.png` }}
-                                defaultSource={getAssetIDByName("Discord")}
-                            />
-                            <View style={styles.accountInfo}>
-                                <Text style={styles.accountName}>
-                                    {account.username}#{account.discriminator}
-                                </Text>
-                                <Text style={styles.accountEmail}>{account.email}</Text>
-                            </View>
-                            {storage.currentAccount === account.id && (
-                                <Image source={getAssetIDByName("ic_radio_checked_24px")} />
-                            )}
-                        </TouchableOpacity>
-                        {index < storage.accounts.length - 1 && <FormDivider />}
-                    </React.Fragment>
-                ))}
-            </FormSection>
-
-            <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => navigation.push("VendettaAddAccount")}
-            >
-                <Text style={styles.addButtonText}>Yeni Hesap Ekle</Text>
-            </TouchableOpacity>
-        </ScrollView>
-    );
+  return new TextDecoder().decode(decrypted);
 }
 
-// Ayarlar sayfasına "Hesap Değiştir" butonu ekleme
-export default definePlugin({
-    name: "Hesap Değiştirici",
-    description: "Discord hesapları arasında hızlı geçiş yapmanızı sağlar",
-    authors: [{ name: "Sen", id: "USER_ID" }],
-    version: "1.0.0",
-    onLoad() {
-        const patches = [];
-        const navigation = NavigationNative.useNavigation();
+function getDeviceKey(): string {
+  try {
+    return deviceModule.getDeviceId?.() ?? "fallback-device-id";
+  } catch {
+    return "fallback-device-id";
+  }
+}
 
-        // Ayarlar sayfasına yeni bölüm ekle
-        patches.push(after("default", findByProps("UserSettingsOverviewWrapper"), (_, ret) => {            
-            return (
-                <React.Fragment>
-                    {ret}
-                    <FormSection title="Hesap Yönetimi">
-                        <FormRow
-                            label="Hesapları Yönet"
-                            leading={<FormRow.Icon source={getAssetIDByName("ic_profile")} />}
-                            onPress={() => navigation.push("VendettaAccountManager")}
-                        />
-                    </FormSection>
-                </React.Fragment>
-            );
-        }));
+async function autoRegisterToken() {
+  const currentToken = tokenModule.getToken();
+  const deviceKey = getDeviceKey();
 
-        // Navigasyon ekranlarını kaydet
-        this.registeredScreens = [
-            NavigationNative.registerScreen(
-                "VendettaAccountManager",
-                () => AccountManagerScreen
-            ),
-            NavigationNative.registerScreen(
-                "VendettaAddAccount",
-                () => AddAccountScreen
-            ),
-        ];
+  if (!storage.accountTokens) storage.accountTokens = [];
 
-        return () => {
-            patches.forEach(p => p());
-            this.registeredScreens.forEach(s => NavigationNative.unregisterScreen(s));
-        };
-    },
-});
+  const exists = await Promise.all(
+    storage.accountTokens.map(async (acc) => {
+      const dec = await decryptToken(acc.token, deviceKey);
+      return dec === currentToken;
+    })
+  );
+
+  if (!exists.includes(true)) {
+    const user = userModule.getCurrentUser();
+    const encrypted = await encryptToken(currentToken, deviceKey);
+
+    storage.accountTokens.push({
+      name: user?.username ?? "Unknown",
+      token: encrypted,
+    });
+  }
+}
+
+function AccountSwitcherModal() {
+  const [accounts, setAccounts] = useState(storage.accountTokens ?? []);
+  const deviceKey = getDeviceKey();
+
+  return (
+    <React.Fragment>
+      <Forms.FormTitle title="Hesap Değiştirici" />
+      {accounts.length === 0 ? (
+        <Forms.FormRow
+          label="Kayıtlı hesap bulunamadı."
+          subLabel="Yeni bir hesaba giriş yaparak otomatik eklenmesini sağlayabilirsin."
+        />
+      ) : (
+        accounts.map((acc, i) => (
+          <FormRow
+            key={i}
+            label={acc.name}
+            subLabel={"•••••••••" + i}
+            leading={<Forms.FormIcon icon="ic_profile_24px" />}
+            onPress={async () => {
+              const token = await decryptToken(acc.token, deviceKey);
+              tokenModule.setToken(token);
+              location.reload();
+            }}
+          />
+        ))
+      )}
+    </React.Fragment>
+  );
+}
+
+export default {
+  onLoad: () => {
+    autoRegisterToken();
+
+    const settingsView = findByProps("getSettingsPanel").default;
+    const oldRender = settingsView.prototype.render;
+
+    settingsView.prototype.render = function () {
+      const res = oldRender.call(this);
+      res.props.children.push({
+        type: "button",
+        label: "Hesap Değiştir",
+        onPress: () => showModal("Hesap Değiştirici", AccountSwitcherModal),
+      });
+      return res;
+    };
+
+    settingsView.prototype.render._original = oldRender;
+  },
+
+  onUnload: () => {
+    const settingsView = findByProps("getSettingsPanel").default;
+    if (settingsView?.prototype?.render?._original)
+      settingsView.prototype.render = settingsView.prototype.render._original;
+  },
+};
