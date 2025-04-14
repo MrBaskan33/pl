@@ -1,11 +1,12 @@
 import { React, findByProps } from "@vendetta/metro";
 import { storage } from "@vendetta/plugin";
 import { showModal } from "@vendetta/ui/modal";
+import { showToast } from "@vendetta/ui/toasts";
 import { Forms } from "@vendetta/ui/components";
 
-const { FormRow, FormTitle } = Forms;
+const { FormRow, FormSection, FormDivider, FormTitle } = Forms;
+
 const tokenModule = findByProps("getToken", "setToken");
-const settingsView = findByProps("getSettingsPanel")?.default;
 const userModule = findByProps("getCurrentUser");
 const deviceModule = findByProps("getDeviceId");
 
@@ -84,12 +85,14 @@ async function saveCurrentAccount() {
   const encrypted = await encryptToken(token, deviceId);
   storage.accounts = storage.accounts || [];
 
-  if (!storage.accounts.find(acc => acc.id === user.id)) {
+  const exists = storage.accounts.find((acc) => acc.id === user.id);
+  if (!exists) {
     storage.accounts.push({
       id: user.id,
       name: user.username,
       token: encrypted,
     });
+    showToast(`Hesap "${user.username}" kaydedildi`);
   }
 }
 
@@ -97,9 +100,20 @@ function AccountSwitcherModal() {
   const deviceKey = getDeviceKey();
   const [accounts, setAccounts] = React.useState(storage.accounts ?? []);
 
+  const handleSwitch = async (acc) => {
+    try {
+      const token = await decryptToken(acc.token, deviceKey);
+      tokenModule.setToken(token);
+      showToast(`"${acc.name}" hesabına geçiliyor...`);
+      setTimeout(() => location.reload(), 1000);
+    } catch (err) {
+      showToast("Geçiş yapılamadı. Şifreleme hatası.");
+    }
+  };
+
   return (
     <>
-      <FormTitle title="Hesap Değiştirici" />
+      <FormTitle title="Kayıtlı Hesaplar" />
       {accounts.length === 0 ? (
         <FormRow label="Kayıtlı hesap yok." />
       ) : (
@@ -108,11 +122,7 @@ function AccountSwitcherModal() {
             key={index}
             label={acc.name}
             subLabel={`ID: ${acc.id}`}
-            onPress={async () => {
-              const token = await decryptToken(acc.token, deviceKey);
-              tokenModule.setToken(token);
-              location.reload();
-            }}
+            onPress={() => handleSwitch(acc)}
           />
         ))
       )}
@@ -121,28 +131,24 @@ function AccountSwitcherModal() {
 }
 
 export default {
-  onLoad: () => {
+  onLoad() {
     saveCurrentAccount();
-
-    if (!settingsView?.prototype?.render) return;
-
-    const oldRender = settingsView.prototype.render;
-    settingsView.prototype.render = function () {
-      const res = oldRender.call(this);
-      const items = res.props.children;
-
-      items.push({
-        type: "button",
-        label: "Hesap Değiştir",
-        onPress: () => showModal("Hesap Değiştir", AccountSwitcherModal),
-      });
-
-      return res;
-    };
   },
 
-  onUnload: () => {
-    if (settingsView?.prototype?.render?._original)
-      settingsView.prototype.render = settingsView.prototype.render._original;
+  onUnload() {},
+
+  getSettingsPanel() {
+    return () => (
+      <>
+        <FormSection title="Hesap Değiştirici">
+          <FormRow
+            label="Hesap Değiştir"
+            subLabel="Kayıtlı hesapları görüntüle ve geçiş yap"
+            onPress={() => showModal("Hesap Değiştir", AccountSwitcherModal)}
+          />
+          <FormDivider />
+        </FormSection>
+      </>
+    );
   },
 };
