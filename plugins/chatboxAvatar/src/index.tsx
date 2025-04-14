@@ -17,6 +17,7 @@ const showUserProfileActionSheet = findByName("showUserProfileActionSheet", fals
 const ActionSheet = findByProps("openLazy", "hideActionSheet")
 const StatusPickerActionSheet = findByName("StatusPickerActionSheet", false)
 const Settings = findByProps("saveAccountChanges")
+const ChatInputQuickActions = findByProps("ChatInputQuickActions", false)
 const { UserSettingsSections } = findByProps("UserSettingsSections") || { UserSettingsSections: { CUSTOM_STATUS: "CUSTOM_STATUS" } }
 
 function AvatarAction() {
@@ -88,15 +89,15 @@ const patches = []
 
 export default {
   onLoad() {
-    const patch = after("render", ChatInputNew, (args, ret) => {
-      const insertPoint = findInReactTree(
-        ret,
-        (x) => x?.children?.[0]?.props?.actions
-      )?.children
-
-      if(insertPoint) insertPoint.unshift(<AvatarAction />)
+    if(!ChatInputQuickActions) return
+    
+    const patch = after("default", ChatInputQuickActions, (args, ret) => {
+      ret.props.children.unshift(
+        <YourAvatarComponent key = "vendetta-quick-actions-avatar" />
+      )
+      return ret
     })
-    patches.push(patch)
+    return () => patch()
   },
   onUnload() {
     patches.forEach((unpatch) => unpatch?.())
