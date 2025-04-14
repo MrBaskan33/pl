@@ -1,225 +1,151 @@
 // @ts-nocheck
 import { definePlugin } from "@vendetta";
-import { React, NavigationNative, stylesheet, constants } from "@vendetta/metro/common";
-import { Forms, General } from "@vendetta/ui/components";
+import { React, NavigationNative, stylesheet, constants, ReactNative } from "@vendetta/metro/common";
+import { Forms } from "@vendetta/ui/components";
 import { storage } from "@vendetta/plugin";
-import { useProxy } from "@vendetta/storage";
-import { after } from "@vendetta/patcher";
-import { getAssetIDByName } from "@vendetta/ui/assets";
-import { findByProps } from "@vendetta/metro";
 import { showToast } from "@vendetta/ui/toasts";
+import { getAssetIDByName } from "@vendetta/ui/assets";
+import { findByStoreName } from "@vendetta/metro";
 import { device } from "@vendetta/ui/assets";
-import CryptoJS from "crypto-js";
+import { encrypt, decrypt } from "@vendetta/encrypt";
 
 const { FormRow, FormSection, FormDivider } = Forms;
-const { View, Text, ScrollView, TouchableOpacity, Image, Modal, TextInput } = General;
+const { View, Text, ScrollView, TouchableOpacity, Image } = ReactNative;
 
-// Şifreleme anahtarını cihaz ID'ye göre oluştur
-function getEncryptionKey() {
-  return CryptoJS.SHA256(device.uuid).toString(CryptoJS.enc.Hex).substring(0, 32);
-}
-
-// Veriyi AES ile şifrele
-function encryptData(data: string) {
-  return CryptoJS.AES.encrypt(data, getEncryptionKey()).toString();
-}
-
-// Veriyi AES ile çöz
-function decryptData(ciphertext: string) {
-  return CryptoJS.AES.decrypt(ciphertext, getEncryptionKey()).toString(CryptoJS.enc.Utf8);
-}
-
-// Başlangıç depolama yapısı
+// Revenge/Vendetta uyumlu depolama yapısı
 if (!storage.accounts) storage.accounts = [];
 if (!storage.currentAccount) storage.currentAccount = null;
 
-// Stil sayfası
+// Şifreleme anahtarı (Cihaz spesifik)
+const getEncryptionKey = () => 
+  encrypt(device.uuid.split("").reverse().join("") + device.uuid);
+
 const styles = stylesheet.createThemedStyleSheet({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: constants.ThemeColorMap.BACKGROUND_PRIMARY,
+    backgroundColor: constants.ThemeColorMap.BACKGROUND_MOBILE_PRIMARY,
   },
-  accountItem: {
-    flexDirection: "row",
-    alignItems: "center",
+  accountCard: {
+    backgroundColor: constants.ThemeColorMap.BACKGROUND_MOBILE_SECONDARY,
+    borderRadius: 10,
+    marginVertical: 4,
     padding: 12,
-    backgroundColor: constants.ThemeColorMap.BACKGROUND_SECONDARY,
-    borderRadius: 8,
-    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center"
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: constants.ThemeColorMap.BACKGROUND_PRIMARY,
-    padding: 16,
-  },
-  input: {
+  avatar: {
+    width: 40, 
     height: 40,
-    borderColor: constants.ThemeColorMap.BACKGROUND_TERTIARY,
-    borderWidth: 1,
-    marginBottom: 12,
-    padding: 10,
-    color: constants.ThemeColorMap.TEXT_NORMAL,
-    borderRadius: 4,
-  },
+    borderRadius: 20,
+    marginRight: 12
+  }
 });
 
-// Hesap ekleme modal bileşeni
-function AddAccountModal({ visible, onClose }) {
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [isAdding, setIsAdding] = React.useState(false);
+const UserStore = findByStoreName("UserStore");
+const AuthStore = findByStoreName("AuthStore");
 
-  const handleAddAccount = async () => {
-    setIsAdding(true);
+const AccountSwitcherScreen = () => {
+  const navigation = NavigationNative.useNavigation();
+  const [accounts, setAccounts] = React.useState(storage.accounts);
+
+  const switchAccount = async (account) => {
     try {
-      const loginResult = await findByProps("login").login(email, password);
+      const decryptedToken = decrypt(account.token, getEncryptionKey());
       
-      const user = findByProps("getCurrentUser").getCurrentUser();
-      const token = window.DiscordNative?.window?.getAuthToken?.();
+      await AuthStore.actions.setToken(decryptedToken);
+      storage.currentAccount = account.id;
       
-      if (!user || !token) throw new Error("Giriş başarısız");
-
-      const encryptedToken = encryptData(token);
-      
-      storage.accounts.push({
-        id: user.id,
-        username: user.username,
-        discriminator: user.discriminator,
-        avatar: user.avatar,
-        email: email,
-        token: encryptedToken,
-      });
-
-      showToast("Hesap eklendi!", getAssetIDByName("Check"));
-      onClose();
-    } catch (error) {
-      showToast("Hata: " + error.message, getAssetIDByName("Small"));
-    } finally {
-      setIsAdding(false);
+      showToast(`✅ ${account.username} yükleniyor...`);
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+      showToast(`❌ Hata: ${e.message}`);
     }
   };
 
-  return (
-    <Modal visible={visible} animationType="slide">
-      <ScrollView style={styles.modalContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Şifre"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-        <TouchableOpacity
-          onPress={handleAddAccount}
-          disabled={isAdding}
-        >
-          <Text style={{ color: constants.ThemeColorMap.TEXT_LINK }}>
-            {isAdding ? "Ekleniyor..." : "Hesap Ekle"}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </Modal>
-  );
-}
-
-// Hesap yönetimi bileşeni
-function AccountManager() {
-  useProxy(storage);
-  const [addModalVisible, setAddModalVisible] = React.useState(false);
-
-  const switchAccount = (account) => {
-    try {
-      const decryptedToken = decryptData(account.token);
-      window.DiscordNative?.window?.setAuthToken?.(decryptedToken);
-      storage.currentAccount = account.id;
-      showToast(`${account.username} hesabına geçildi`, getAssetIDByName("Check"));
-    } catch (error) {
-      showToast("Token çözülemedi: " + error.message, getAssetIDByName("Small"));
-    }
+  const addCurrentAccount = () => {
+    const currentUser = UserStore.getCurrentUser();
+    if (!currentUser) return showToast("⚠️ Önce giriş yapın!");
+    
+    const existing = storage.accounts.find(a => a.id === currentUser.id);
+    if (existing) return showToast("⚠️ Zaten kayıtlı!");
+    
+    const encryptedToken = encrypt(AuthStore.getToken(), getEncryptionKey());
+    
+    storage.accounts.push({
+      id: currentUser.id,
+      username: currentUser.username,
+      discriminator: currentUser.discriminator,
+      avatar: currentUser.avatar,
+      token: encryptedToken
+    });
+    
+    showToast("✅ Hesap kaydedildi!");
+    setAccounts([...storage.accounts]);
   };
 
   return (
     <ScrollView style={styles.container}>
-      <FormSection title="Kayıtlı Hesaplar">
-        {storage.accounts.map((account) => (
+      <FormSection title="Hesap Yönetimi">
+        {accounts.map(acc => (
           <TouchableOpacity
-            key={account.id}
-            style={styles.accountItem}
-            onPress={() => switchAccount(account)}
+            key={acc.id}
+            style={styles.accountCard}
+            onPress={() => switchAccount(acc)}
+            onLongPress={() => {
+              storage.accounts = storage.accounts.filter(a => a.id !== acc.id);
+              setAccounts([...storage.accounts]);
+              showToast("🗑️ Hesap silindi!");
+            }}
           >
             <Image
-              source={{ uri: `https://cdn.discordapp.com/avatars/${account.id}/${account.avatar}.png` }}
-              style={{ width: 40, height: 40, borderRadius: 20, marginRight: 12 }}
+              source={{ uri: `https://cdn.discordapp.com/avatars/${acc.id}/${acc.avatar}.png` }}
+              style={styles.avatar}
             />
             <View>
               <Text style={{ color: constants.ThemeColorMap.TEXT_NORMAL }}>
-                {account.username}#{account.discriminator}
+                {acc.username}#{acc.discriminator}
               </Text>
               <Text style={{ color: constants.ThemeColorMap.TEXT_MUTED }}>
-                {account.email}
+                {acc.id === storage.currentAccount ? "Aktif Hesap" : ""}
               </Text>
             </View>
           </TouchableOpacity>
         ))}
+        
+        <FormDivider />
+        
+        <FormRow
+          label="Mevcut Hesabı Ekle"
+          leading={<FormRow.Icon source={getAssetIDByName("ic_add_24px")} />}
+          onPress={addCurrentAccount}
+        />
       </FormSection>
-
-      <TouchableOpacity
-        style={{ padding: 16, alignItems: "center" }}
-        onPress={() => setAddModalVisible(true)}
-      >
-        <Text style={{ color: constants.ThemeColorMap.TEXT_LINK }}>Yeni Hesap Ekle</Text>
-      </TouchableOpacity>
-
-      <AddAccountModal
-        visible={addModalVisible}
-        onClose={() => setAddModalVisible(false)}
-      />
     </ScrollView>
   );
-}
+};
 
 export default definePlugin({
-  name: "Güvenli Hesap Değiştirici",
-  description: "Şifrelenmiş token yönetimi ile hesap geçişi",
-  authors: [{ name: "Sen", id: "YOUR_ID" }],
-  version: "2.0.0",
+  name: "Revenge Account Switcher",
+  description: "Güvenli hesap geçişi için Revenge eklentisi",
+  version: "1.0.2",
+  authors: [{ name: "Sen", id: "YOUR_DISCORD_ID" }],
+  
   onLoad() {
-    const patches = [];
     const navigation = NavigationNative.useNavigation();
+    const unpatch = after("default", findByStoreName("SettingsScreen").prototype, (_, ret) => {
+      ret.props.children.props.sections.unshift({
+        title: "Hesap Yöneticisi",
+        icon: getAssetIDByName("ic_profile"),
+        onPress: () => navigation.push("RevengeAccountSwitcher")
+      });
+    });
 
-    // Ayarlar sayfasına buton ekle
-    patches.push(after("default", findByProps("UserSettingsOverviewWrapper"), (_, ret) => (
-      <React.Fragment>
-        {ret}
-        <FormSection title="Hesap Yönetimi">
-          <FormRow
-            label="Hesapları Yönet"
-            leading={<FormRow.Icon source={getAssetIDByName("ic_profile")} />}
-            onPress={() => navigation.push("SecureAccountSwitcher")}
-          />
-        </FormSection>
-      </React.Fragment>
-    )));
-
-    // Ekranı kaydet
-    this.registeredScreens = [
-      NavigationNative.registerScreen(
-        "SecureAccountSwitcher",
-        () => AccountManager
-      )
-    ];
-
+    NavigationNative.registerScreen("RevengeAccountSwitcher", () => AccountSwitcherScreen);
+    
     return () => {
-      patches.forEach(p => p());
-      this.registeredScreens.forEach(s => NavigationNative.unregisterScreen(s));
+      unpatch();
+      NavigationNative.unregisterScreen("RevengeAccountSwitcher");
     };
-  },
+  }
 });
