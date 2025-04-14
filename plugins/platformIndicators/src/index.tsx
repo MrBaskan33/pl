@@ -259,8 +259,8 @@ export default {
       const channel = args[0]?.channel
       if(channel?.recipients?.length == 1) {
         const userId = channel.recipients[0]
-        const textContainer = findInReactTree(res, m => m.props.children[0].props.variant =="redesign/channel-title/semibold"
-        textContainer.props.children.push(<View key="TabsV2RedesignDMListIcons" style = {{
+        const textContainer = findInReactTree(res, m => m.props.children[0].props.variant == "redesign/channel-title/semibold")
+        textContainer.props.children.push(<View key = "TabsV2RedesignDMListIcons" style = {{
             flexDirection: "row"
           }}>
           { debugLabels ? <Text>TV2RDMLI</Text> : <StatusIcons userId = { userId }/> }
