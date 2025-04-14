@@ -14,7 +14,7 @@ export default {
                 orig(args[0], args[1]);
                 resolve();
             });
-        });
+        }))
 
         // 2. Tüm modal dispatch'leri engelle
         unpatch.push(instead("dirtyDispatch", FluxDispatcher, (action, orig) => {
