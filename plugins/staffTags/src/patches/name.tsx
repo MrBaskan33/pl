@@ -1,7 +1,7 @@
 import { findByName, findByProps, findByStoreName } from "@vendetta/metro"
 import { after } from "@vendetta/patcher"
 import { findInReactTree } from "@vendetta/utils"
-import getTag, { BUILT_IN_TAGS } from "../lib/getTag"
+import getTag, { BUILT_IN_TAGS } from "../getTag"
 
 const DisplayName = findByName("DisplayName", false)
 const HeaderName = findByName("HeaderName", false)
