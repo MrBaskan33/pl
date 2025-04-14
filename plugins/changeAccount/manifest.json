@@ -1,0 +1,14 @@
+{
+  "name": "Change Account",
+  "description": "Change Account Plugin.",
+  "authors": [
+    {
+      "name": "mrbaskan",
+      "id": "873182701061021696"
+    }
+  ],
+  "main": "src/index.tsx",
+  "vendetta": {
+    "icon": "ic_profile"
+  }
+}
