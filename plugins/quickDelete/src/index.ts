@@ -22,7 +22,7 @@ export default {
                 return null;
             }
             return orig(action);
-        });
+        }))
 
         // 3. UI katmanını tamamen bypass et
         const React = findByProps("createElement");
