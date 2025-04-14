@@ -1,7 +1,7 @@
 import { findByName, findByStoreName } from "@vendetta/metro"
 import { ReactNative, chroma } from "@vendetta/metro/common"
 import { after } from "@vendetta/patcher"
-import getTag, { BUILT_IN_TAGS } from "../lib/getTag"
+import getTag, { BUILT_IN_TAGS } from "../getTag"
 
 const getTagProperties = findByName("getTagProperties", false)
 const GuildStore = findByStoreName("GuildStore")
