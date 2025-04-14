@@ -7,7 +7,7 @@
       "id": "873182701061021696"
     }
   ],
-  "main": "src/index.ts",
+  "main": "src/index.tsx",
   "vendetta": {
     "icon": "ic_phone"
   }
