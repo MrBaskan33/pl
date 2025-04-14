@@ -1,0 +1,11 @@
+{
+  "name": "Pastelize",
+  "description": "Pastelize Plugin.",
+  "authors": [
+    {
+      "name": "mrbaskan",
+      "id": "873182701061021696"
+    }
+  ],
+  "main": "src/index.ts"
+}
