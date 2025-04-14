@@ -27,7 +27,7 @@ export default {
             DialogManager?.dismissAllDialogs?.();
             
             return Promise.resolve(); // Hata vermemesi için
-        });
+        }))
 
         // 3. MessageStore'daki silme işlemini de yakala
         if (MessageStore) {
