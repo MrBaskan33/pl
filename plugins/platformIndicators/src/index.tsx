@@ -1,14 +1,14 @@
 import { patcher } from "@vendetta"
 import { findByDisplayName, findByName, findByProps, findByPropsAll, findByStoreName, findByTypeNameAll, findByTypeName } from "@vendetta/metro"
-import {General} from "@vendetta/ui/components"
+import { General } from "@vendetta/ui/components"
 import { findInReactTree } from "@vendetta/utils"
-import StatusIcons from "./StatusIcons"
+import StatusIcons from "./statusIcons"
 import { getAssetByName, getAssetIDByName } from "@vendetta/ui/assets"
 import { storage } from "@vendetta/plugin"
 import Settings from "./settings"
 import React, { useState, useEffect } from "react"
-import RerenderContainer from "./RerenderContainer"
-import PresenceUpdatedContainer from "./PresenceUpdatedContainer"
+import RerenderContainer from "./rerenderContainer"
+import PresenceUpdatedContainer from "./presenceUpdatedContainer"
 const { Text, View } = General
 
 let unpatches = []
