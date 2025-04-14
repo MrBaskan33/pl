@@ -1,26 +1,23 @@
 import { after, instead } from "@vendetta/patcher"
 import { findByName, findByProps, findByStoreName } from "@vendetta/metro"
-import { ReactNative } from "@vendetta/metro/common"
+import { React } from "@vendetta/metro/common"
 import { findInReactTree } from "@vendetta/utils"
 
 const Flux = findByProps("useStateFromStores")
-const ChatInputNew = findByProps("Actions", "ExpressionButton")
-const Avatar = findByProps("getStatusSize").default
-const {Pressable} = ReactNative
+const ChatInputNew = findByProps("Actions", "ExpressionButton")?.default || findByProps("ChatInput")
+const Avatar = findByProps("getStatusSize")?.default
+const { Pressable } = findByProps("Pressable") || React
 const AvatarStuff211 = findByProps("DEFAULT_STATUS_CUTOUT")
-let DEFAULT_STATUS_CUTOUT
-if(AvatarStuff211 != null) {
-  DEFAULT_STATUS_CUTOUT = AvatarStuff211.DEFAULT_STATUS_CUTOUT
-}
+let DEFAULT_STATUS_CUTOUT = AvatarStuff211?.DEFAULT_STATUS_CUTOUT || "cutout"
 const SelfPresenceStore = findByStoreName("SelfPresenceStore")
 const UserStore = findByStoreName("UserStore")
 const SelectedChannelStore = findByStoreName("SelectedChannelStore")
 const ChannelStore = findByStoreName("ChannelStore")
-const showUserProfileActionSheet = findByName("showUserProfileActionSheet")
+const showUserProfileActionSheet = findByName("showUserProfileActionSheet", false)
 const ActionSheet = findByProps("openLazy", "hideActionSheet")
-const StatusPickerActionSheet = findByName("StatusPickerActionSheet")
+const StatusPickerActionSheet = findByName("StatusPickerActionSheet", false)
 const Settings = findByProps("saveAccountChanges")
-const { UserSettingsSections } = findByProps("UserSettingsSections")
+const { UserSettingsSections } = findByProps("UserSettingsSections") || { UserSettingsSections: { CUSTOM_STATUS: "CUSTOM_STATUS" } }
 
 function AvatarAction() {
   const self = Flux.useStateFromStores([UserStore], () => UserStore.getCurrentUser())
@@ -32,6 +29,8 @@ function AvatarAction() {
     [channelId]
   )
 
+  if(!self) return null
+  
   return (
     <Pressable
       style = {{
@@ -44,14 +43,14 @@ function AvatarAction() {
         justifyContent: "center",
       }}
       onLongPress = { openStatus }
-      onPress={ createOpenProfile(self?.id, channel?.id ?? channelId) }
+      onPress = { createOpenProfile(self?.id, channel?.id ?? channelId) }
     >
       <Avatar
         user = { self }
         guildId = { channel?.guild_id }
         status = { status }
         avatarDecoration = { self.avatarDecoration }
-        animate = { true } 
+        animate = { true }
         autoStatusCutout = { DEFAULT_STATUS_CUTOUT }
       />
     </Pressable>
@@ -60,24 +59,24 @@ function AvatarAction() {
 
 function createOpenProfile(userId, channelId) {
   return () => {
-    showUserProfileActionSheet({
-      userId,
-      channelId,
-    })
+    if(showUserProfileActionSheet) {
+      showUserProfileActionSheet({
+        userId,
+        channelId,
+      })
+    }
   }
 }
 
 function openStatus() {
-  ActionSheet.hideActionSheet()
-  ActionSheet.openLazy(
-    async function () {
-      return StatusPickerActionSheet
-    },
+  ActionSheet?.hideActionSheet()
+  ActionSheet?.openLazy(
+    async () => StatusPickerActionSheet,
     "StatusPicker",
     {
-      onSetCustomStatus: function () {
-        ActionSheet.hideActionSheet()
-        Settings.open(UserSettingsSections.CUSTOM_STATUS, null, {
+      onSetCustomStatus: () => {
+        ActionSheet?.hideActionSheet()
+        Settings?.open(UserSettingsSections.CUSTOM_STATUS, null, {
           openWithoutBackstack: true,
         })
       },
@@ -87,21 +86,19 @@ function openStatus() {
 
 const patches = []
 
-export const onLoad = () => {
-  patches.push(
-    after("render", ChatInputNew.default, (args, ret) => {
+export default {
+  onLoad() {
+    const patch = after("render", ChatInputNew, (args, ret) => {
       const insertPoint = findInReactTree(
         ret,
         (x) => x?.children?.[0]?.props?.actions
       )?.children
 
-      if(insertPoint) insertPoint.splice(0, 0, <AvatarAction />)
+      if(insertPoint) insertPoint.unshift(<AvatarAction />)
     })
-  )
-}
-
-export const onUnload = () => {
-  for(const unpatch of patches) {
-    unpatch?.()
-  }
+    patches.push(patch)
+  },
+  onUnload() {
+    patches.forEach((unpatch) => unpatch?.())
+  },
 }
