@@ -7,7 +7,7 @@
       "id": "873182701061021696"
     }
   ],
-  "main": "src/index.js",
+  "main": "src/index.tsx",
   "vendetta": {
     "icon": "ic_profile"
   }
