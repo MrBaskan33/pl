@@ -4,7 +4,7 @@ import { findInReactTree } from "@vendetta/utils"
 import { findByName, findByProps } from "@vendetta/metro"
 import { React } from "@vendetta/metro/common"
 import { Forms } from "@vendetta/ui/components"
-import RawPage from "./RawPage"
+import RawPage from "./rawPage"
 
 const LazyActionSheet = findByProps("openLazy", "hideActionSheet")
 const Navigation = findByProps("push", "pushLazy", "pop")
