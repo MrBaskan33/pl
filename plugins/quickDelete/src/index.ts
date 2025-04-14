@@ -1,57 +1,40 @@
-import { findByProps, findByName, findByStoreName } from "@revenge/metro";
+import { findByProps } from "@revenge/metro";
 import { instead } from "@revenge/patcher";
 
-const MessageActions = findByProps("deleteMessage", "editMessage");
-const ModalUtils = findByProps("openModal", "closeAllModals");
-const DialogManager = findByProps("showDialog", "dismissAllDialogs");
-const MessageStore = findByStoreName("MessageStore");
+const MessageActions = findByProps("deleteMessage");
+const FluxDispatcher = findByProps("dirtyDispatch");
 
 let unpatch = [];
 
 export default {
     onLoad: () => {
-        // 1. Tüm dialog/modal açılışlarını engelle
-        unpatch.push(
-            instead("showDialog", DialogManager, () => {}),
-            instead("openModal", ModalUtils, () => {}),
-            instead("push", findByProps("push"), () => {})
-        );
-
-        // 2. Direkt API ile mesaj silme (ana bypass)
+        // 1. Direkt mesaj silme (API seviyesinde)
         unpatch.push(instead("deleteMessage", MessageActions, (args, orig) => {
-            // Mesajı direkt sil (channelId, messageId)
-            orig(args[0], args[1]);
-            
-            // Açık kalan tüm UI elementlerini temizle
-            ModalUtils?.closeAllModals?.();
-            DialogManager?.dismissAllDialogs?.();
-            
-            return Promise.resolve(); // Hata vermemesi için
-        }))
+            return new Promise((resolve) => {
+                orig(args[0], args[1]);
+                resolve();
+            });
+        });
 
-        // 3. MessageStore'daki silme işlemini de yakala
-        if (MessageStore) {
-            unpatch.push(instead("deleteMessage", MessageStore, (args, orig) => {
-                orig(...args);
-                return true; // Store'un işlemi engellemesini önle
-            }));
-        }
+        // 2. Tüm modal dispatch'leri engelle
+        unpatch.push(instead("dirtyDispatch", FluxDispatcher, (action, orig) => {
+            if (action.type?.includes("MODAL") || action.type?.includes("DIALOG")) {
+                return null;
+            }
+            return orig(action);
+        });
 
-        // 4. React seviyesinde modal engelleme (nükleer seçenek)
+        // 3. UI katmanını tamamen bypass et
         const React = findByProps("createElement");
-        if (React) {
-            unpatch.push(instead("createElement", React, (args) => {
-                if (args[0]?.type?.name?.includes("Modal")) return null;
-                return args[0];
-            }));
-        }
+        unpatch.push(instead("createElement", React, (args) => {
+            if (args[0]?.type?.name?.includes("Confirm")) {
+                args[0].props.onConfirm();
+                return null;
+            }
+            return args[0];
+        }));
 
-        console.log("[Revenge Delete Bypass] Aktif!");
+        console.log("[Kesin Çözüm] Aktif!");
     },
-
-    onUnload: () => {
-        unpatch.forEach(u => u());
-        unpatch = [];
-        console.log("[Revenge Delete Bypass] Kaldırıldı!");
-    }
-}
+    onUnload: () => unpatch.forEach(u => u())
+};
