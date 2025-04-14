@@ -1,14 +1,11 @@
 {
-    "name": "Addon List",
-    "description": "Addon List Plugin.",
-    "authors": [
-        {
-            "name": "mrbaskan",
-            "id": "873182701061021696"
-        }
-    ],
-    "main": "src/index.ts",
-    "vendetta": {
-        "icon": "ic_list"
+  "name": "Addon List",
+  "description": "Addon List Plugin.",
+  "authors": [
+    {
+      "name": "mrbaskan",
+      "id": "873182701061021696"
     }
+  ],
+  "main": "src/index.ts"
 }
