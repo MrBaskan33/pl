@@ -1,1 +1,1 @@
-{"name":"Addon List","description":"Addon List Plugin.","authors":[{"name":"mrbaskan","id":"873182701061021696"}],"main":"index.js","hash":"9afafa9bddad11c65cac372e1d8571a4755fb4cb5c960aa38263710d322ca41a"}
+{"name":"Addon List","description":"Addon List Plugin.","authors":[{"name":"mrbaskan","id":"873182701061021696"}],"main":"index.js","vendetta":{"icon":"ic_list"},"hash":"9afafa9bddad11c65cac372e1d8571a4755fb4cb5c960aa38263710d322ca41a"}
