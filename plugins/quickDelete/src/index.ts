@@ -56,4 +56,3 @@ export default {
         console.log("[Silme Bypass] Kaldırıldı!");
     }
 }
-}
