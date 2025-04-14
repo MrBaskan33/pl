@@ -4,7 +4,7 @@ import patchDetails from "./patches/details"
 import patchName from "./patches/name"
 import patchSidebar from "./patches/sidebar"
 import patchTag from "./patches/tag"
-import Settings from "./ui/pages/Settings"
+import Settings from "./settings"
 
 let patches = []
 
