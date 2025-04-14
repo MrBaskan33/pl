@@ -75,7 +75,7 @@ function getCurrentAccountInfo() {
         discriminator: currentUser?.discriminator,
         avatar: currentUser?.avatar,
         email: currentEmail,
-        token: window.DiscordNative?.window?.getAuthToken?.() // Dikkat: Bu güvenlik riski oluşturabilir
+        token: window.DiscordNative?.window?.getAuthToken?.()
     };
 }
 
@@ -91,18 +91,15 @@ function AddAccountScreen({ navigation }) {
                 throw new Error("Hesap bilgileri alınamadı");
             }
 
-            // Hesap zaten kayıtlı mı kontrolü
             const existingAccount = storage.accounts.find(acc => acc.id === currentAccount.id);
             if (existingAccount) {
                 showToast("Bu hesap zaten kayıtlı", getAssetIDByName("Small"));
                 return;
             }
 
-            // Yeni hesabı ekle
             storage.accounts.push(currentAccount);
             showToast("Hesap başarıyla kaydedildi", getAssetIDByName("Check"));
 
-            // Eğer ilk hesapsa, bunu geçerli hesap olarak ayarla
             if (storage.accounts.length === 1) {
                 storage.currentAccount = currentAccount.id;
             }
@@ -139,12 +136,9 @@ function AccountManagerScreen({ navigation }) {
         if (!account) return;
 
         try {
-            // Token kullanarak hesaba geçiş yap
             window.DiscordNative?.window?.setAuthToken?.(account.token);
             storage.currentAccount = accountId;
             showToast(`Hesap değiştirildi: ${account.username}`, getAssetIDByName("Check"));
-            
-            // Sayfayı yenile
             navigation.goBack();
         } catch (error) {
             showToast("Hesap değiştirilirken hata: " + error.message, getAssetIDByName("Small"));
@@ -207,11 +201,10 @@ export default definePlugin({
     version: "1.0.0",
     onLoad() {
         const patches = [];
+        const navigation = NavigationNative.useNavigation();
 
         // Ayarlar sayfasına yeni bölüm ekle
-        patches.push(after("default", findByProps("UserSettingsOverviewWrapper"), (_, ret) => {
-            const navigation = NavigationNative.useNavigation();
-            
+        patches.push(after("default", findByProps("UserSettingsOverviewWrapper"), (_, ret) => {            
             return (
                 <React.Fragment>
                     {ret}
@@ -224,7 +217,7 @@ export default definePlugin({
                     </FormSection>
                 </React.Fragment>
             );
-        });
+        }));
 
         // Navigasyon ekranlarını kaydet
         this.registeredScreens = [
