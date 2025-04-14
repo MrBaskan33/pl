@@ -46,14 +46,14 @@ function AvatarAction() {
       onLongPress = { openStatus }
       onPress={ createOpenProfile(self?.id, channel?.id ?? channelId) }
     >
-    <Avatar
-      user = { self }
-      guildId = { channel?.guild_id }
-      status = { status }
-      avatarDecoration = { self.avatarDecoration }
-      animate = { true } 
-      autoStatusCutout = { DEFAULT_STATUS_CUTOUT }
-    />
+      <Avatar
+        user = { self }
+        guildId = { channel?.guild_id }
+        status = { status }
+        avatarDecoration = { self.avatarDecoration }
+        animate = { true } 
+        autoStatusCutout = { DEFAULT_STATUS_CUTOUT }
+      />
     </Pressable>
   )
 }
