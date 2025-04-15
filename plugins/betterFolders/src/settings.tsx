@@ -6,7 +6,7 @@ import { Forms } from "@vendetta/ui/components"
 import { semanticColors } from "@vendetta/ui"
 import { findByStoreName, findByProps } from "@vendetta/metro"
 import Colonthree from "./colonthree"
-import updateFolderIcons from "./patcher/updateFolderIcons"
+import updateFolderIcons from "./patches/updateFolderIcons"
 import { after } from "@vendetta/patcher"
 
 const { FormSwitch, FormRow, FormIcon } = Forms
