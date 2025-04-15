@@ -1,5 +1,7 @@
 ___
 ___
+# Plugins
+___
 - ```https://mrbaskan33.github.io/plugins/viewRaw```
 ___
 - ```https://mrbaskan33.github.io/plugins/staffTags```
@@ -31,3 +33,6 @@ ___
 - ```https://mrbaskan33.github.io/plugins/clickableBio```
 ___
 ___
+# Themes
+___
+- ```https://raw.githubusercontent.com/MrBaskan33/plugins/refs/heads/master/themes/theme.json```
