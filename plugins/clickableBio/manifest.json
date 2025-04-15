@@ -1,0 +1,14 @@
+{
+  "name": "Clickable Bio",
+  "description": "Clickable Bio Plugin.",
+  "authors": [
+    {
+      "name": "mrbaskan",
+      "id": "873182701061021696"
+    }
+  ],
+  "main": "src/index.js",
+  "vendetta": {
+    "icon": "ic_mouse"
+  }
+}
