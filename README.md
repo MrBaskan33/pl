@@ -22,8 +22,6 @@ ___
 ___
 - ```https://mrbaskan33.github.io/plugins/freeSticker```
 ___
-- ```https://mrbaskan33.github.io/plugins/platformIndicators```
-___
 - ```https://mrbaskan33.github.io/plugins/realEmoji```
 ___
 - ```https://mrbaskan33.github.io/plugins/hiddenChannels```
